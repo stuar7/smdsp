@@ -2,21 +2,22 @@ from collections import defaultdict
 import time
 import random
 
-def optimal_sp(x, y, w):
+def optimal_sp(S, x, y, w):
     if (x, y) not in S:
         return None, None, None
 
     non_dominated_paths = S[(x, y)]
     min_weighted_cost = float('inf')
     optimal_path = None
-
     for path in non_dominated_paths:
+        
         path_cost = c[path]
         weighted_cost = sum(cost * weight for cost, weight in zip(path_cost, w))
 
         if weighted_cost < min_weighted_cost:
             min_weighted_cost = weighted_cost
             optimal_path = path
+        print(f"path = {path}, weighted_cost = {weighted_cost}")
 
     optimal_path_costs = c[optimal_path]
     sum_weighted_costs = min_weighted_cost
@@ -66,7 +67,11 @@ def single_source_paths_generator(V, E, c):
                         R[(v,)].append((v, u))
 
     Q = []
-    Q.extend(P)
+    for y in V:
+        for x in V:
+            if x != y:
+                Q.extend(P[(x, y)])
+
 
     while Q:
         path = Q.pop(0)
@@ -85,10 +90,8 @@ def single_source_paths_generator(V, E, c):
                         max_cost = max(P[(x, y_prime)], key=lambda p: c[p][i])
                         if c[max_cost][i] < new_path_cost[i]:
                             new_path_added[i] = False
-                            pass
                         else:
                             new_path_added[i] = True
-                            pass
                 else:
                     new_path_added = [True] * d
 
@@ -101,31 +104,29 @@ def single_source_paths_generator(V, E, c):
 
 def dynamic_single_source_paths(V, E, c, v, c_prime):
     d = len(next((value for key, value in c.items())))
-    E_v = [tup for tup in c.keys() if v in tup]
+    
     Q = []
     Q.append((v,))
     while Q:
         pi = Q.pop(0)
         LR = defaultdict(list)
-        for value in L[pi]:            
-            if set((v,)).issubset(set(pi)):
-                LR[pi].append(value)
+        for value in L[pi]:
+            LR[pi].append(value)
 
-        for value in R[pi]:            
-            if set((v,)).issubset(set(pi)):
-                LR[pi].append(value)
-
+        for value in R[pi]:
+            LR[pi].append(value)
+            
         for pathkey, pathvalue in LR.items():
             for path in pathvalue:
 
                 Q.append(path)
-
-                if pathkey in P and path in P[pathkey]:
-                    P[pathkey].remove(path)
                 
                 if (path[0], path[-1]) in P and path in P[path[0], path[-1]]:
                     P[path[0], path[-1]].remove(path)
-                 
+
+                if path in c:
+                    del c[path]
+
                 for subset in range(len(path)-1, 0, -1):
                     if path in L[path[subset:]]:
                         L[path[subset:]].remove(path)
@@ -134,19 +135,6 @@ def dynamic_single_source_paths(V, E, c, v, c_prime):
                     if path in R[path[:-subset]]:
                         R[path[:-subset]].remove(path)
     
-        for k in list(L.keys()): 
-            if not L[k]:
-                L.pop(k, None) 
-
-        for k in list(R.keys()): 
-            if not R[k]:
-                R.pop(k, None) 
-
-    keys_to_delete = [e for e in c.keys() if v in e]
-    for key in keys_to_delete:
-        del c[key]
-        if key in P:
-            del P[key]
 
     for e in E:
         if(v in e):
@@ -157,7 +145,6 @@ def dynamic_single_source_paths(V, E, c, v, c_prime):
                 L[(u,)].append(e)
                 R[(v,)].append(e)
             else:
-                u = e[0]
                 u = e[0]
                 c[(u, v)] = c_prime[(u, v)]
                 P[(u, v)].append(e)
@@ -172,6 +159,7 @@ def dynamic_single_source_paths(V, E, c, v, c_prime):
             if x != y:
                 Q1.extend(P[(x, y)])
 
+    E_v = [tup for tup in c.keys() if v in tup]
     while Q1:
         path = Q1.pop(0)
         x, y = path[0], path[-1]
@@ -186,13 +174,10 @@ def dynamic_single_source_paths(V, E, c, v, c_prime):
                 if bool(P[(x, y_prime)]):
                     for i in range(d):
                         max_cost = max(P[(x, y_prime)], key=lambda p: c[p][i])
-                        #print(f"max_cost: {max_cost}")
                         if c[max_cost][i] < new_path_cost[i]:
                             new_path_added[i] = False
-                            pass
                         else:
                             new_path_added[i] = True
-                            pass
                 else:
                     new_path_added = [True] * d
 
@@ -219,10 +204,8 @@ def dynamic_single_source_paths(V, E, c, v, c_prime):
                         max_cost = max(P[(x, y_prime)], key=lambda p: c[p][i])
                         if c[max_cost][i] < new_path_cost[i]:
                             new_path_added[i] = False
-                            pass
                         else:
                             new_path_added[i] = True
-                            pass
                 else:
                     new_path_added = [True] * d
 
@@ -235,68 +218,97 @@ def dynamic_single_source_paths(V, E, c, v, c_prime):
     return P, L, R, c
 
 # Define the graph, costs, and other parameters
-V = {1, 2, 3, 4, 5, 6}
-E = {(1, 2), (1, 3), (1, 4), (2, 6), (2, 5), (3, 5), (4, 5), (5,6)}
+# V = {1, 2, 3, 4, 5, 6}
+# E = {(1, 2), (1, 3), (1, 4), (1, 5), (2, 6), (3, 6), (4, 6), (5, 6)}
+# c = {
+#     (1, 2): (2, 4, 6),
+#     (1, 3): (4, 6, 2),
+#     (1, 4): (6, 2, 4),
+#     (1, 5): (3, 3, 3),
+#     (2, 6): (1, 1, 1),
+#     (3, 6): (1, 1, 1),
+#     (4, 6): (1, 1, 1),
+#     (5, 6): (1, 1, 1),
+# }
+
+#Vertices:
+V = {i for i in range(1, 21)}
+
+#Edges:
+E = {(1, i) for i in range(2, 7)} | {(2, 7), (2, 8), (3, 8), (3, 9), (4, 9), (4, 10), (5, 10), (5, 11), (6, 11)} | {(7, 20), (8, 20), (9, 20), (11, 20)}
+
+#Costs:
 c = {
-    (1, 2): (1, 2, 3),
-    (1, 3): (1, 2, 3),
-    (1, 4): (1, 2, 3),
-    (2, 5): (4, 5, 6),
-    (3, 5): (5, 6, 4),
-    (4, 5): (6, 4, 5),
-    (2, 6): (13, 13, 13),
-    (5, 6): (1, 1, 1),
+(1, 2): (5, 4, 6),
+(1, 3): (4, 6, 2),
+(1, 4): (6, 2, 4),
+(1, 5): (3, 3, 3),
+(1, 6): (5, 1, 1),
+(2, 7): (1, 5, 1),
+(2, 8): (1, 1, 5),
+(3, 8): (2, 6, 1),
+(3, 9): (6, 1, 2),
+(4, 9): (1, 6, 2),
+(4, 10): (1, 3, 3),
+(5, 10): (3, 1, 3),
+(5, 11): (3, 3, 1),
+(6, 11): (4, 4, 4),
+(7, 20): (1, 3, 2),
+(8, 20): (2, 2, 6),
+(9, 20): (6, 2, 4),
+(11, 20): (5, 5, 5),
 }
 
+
+x, y = 1, 20
+weights = (1, 1, 1)
 # Compute the single-source paths and find the non-dominated path
 P, L, R, c = single_source_paths_generator(V, E, c)
 S = ols_every_vertice(V, P)
+optimal_path, optimal_path_costs, sum_weighted_costs = optimal_sp(S, x, y, weights)
 
-x, y = 1, 5
-weights = (1, 1, 1)
-optimal_path, optimal_path_costs, sum_weighted_costs = optimal_sp(x, y, weights)
-v = 2
+
+## Update Test: Run the Dynamic Algorithm
+# v = 7
+# c_prime = {
+#     (2, v): (5, 5, 5),
+#     (v, 20): (5, 5, 5),
+# }
+# P, L, R, c = dynamic_single_source_paths(V, E, c, v, c_prime)
+# S = ols_every_vertice(V, P)
+# optimal_path_d, optimal_path_costs_d, sum_weighted_costs_d = optimal_sp(S, x, y, weights)
+
+# ## Insertion Test: Run the Dynamic Algorithm
+v = 21
 c_prime = {
-    (1, 2): (5, 11, 5),
-    (2, 5): (10, 12, 14),
-    (2, 6): (1, 1, 1),
+    (2, v): (1, 1, 1),
+    (v, 20): (1, 1, 1),
 }
-
-## Run the Dynamic SS Algorithm
+V = {i for i in range(1, 22)}
+E = E | {(2,v), (v,20)}
 P, L, R, c = dynamic_single_source_paths(V, E, c, v, c_prime)
 S = ols_every_vertice(V, P)
-weights = (1, 1, 1)
-optimal_path_d, optimal_path_costs_d, sum_weighted_costs_d = optimal_sp(x, y, weights)
-v = 4
-c_prime = {
-    (1, 4): (1, 1, 1),
-    (4, 5): (3, 6, 6),
-}
+optimal_path_d, optimal_path_costs_d, sum_weighted_costs_d = optimal_sp(S, x, y, weights)
 
-## Run the Dynamic SS Algorithm - Second Run Through
-P, L, R, c = dynamic_single_source_paths(V, E, c, v, c_prime)
-S = ols_every_vertice(V, P)
 
 print(f"[Static] The optimal path is: {optimal_path}, optimal path costs: {optimal_path_costs}, and sum weighted cost: {sum_weighted_costs}")
 print(f"[Dynamic1] The optimal path is: {optimal_path_d}, optimal path costs: {optimal_path_costs_d}, and sum weighted cost: {sum_weighted_costs_d}")
-optimal_path_d2, optimal_path_costs_d2, sum_weighted_costs_d2 = optimal_sp(x, y, weights)
-print(f"[Dynamic2] The optimal path is: {optimal_path_d2}, optimal path costs: {optimal_path_costs_d2}, and sum weighted cost: {sum_weighted_costs_d2}")
 
-while(1):
-    time.sleep(0.5)
-    v = 4
-    c_prime = {
-        (1, 4): (1, 1, 1),
-        (4, 5): (random.randint(3,10), random.randint(3,10), random.randint(3,10)),
-    }
-    if(random.randint(1,2) == 1):
-        v = 3
-        c_prime = {
-            (1, 3): (1, 2, 3),
-            (3, 5): (random.randint(3,6), random.randint(3,6), random.randint(3,6)),
-        }
-    ## Run the Dynamic SS Algorithm - Second Run Through
-    P, L, R, c = dynamic_single_source_paths(V, E, c, v, c_prime)
-    S = ols_every_vertice(V, P)
-    optimal_path_d2, optimal_path_costs_d2, sum_weighted_costs_d2 = optimal_sp(x, y, weights)
-    print(f"[Dynamic3] The optimal path is: {optimal_path_d2}, optimal path costs: {optimal_path_costs_d2}, and sum weighted cost: {sum_weighted_costs_d2}")
+# # while(1):
+# #     time.sleep(0.5)
+# #     v = 4
+# #     c_prime = {
+# #         (1, v): (1, 1, 1),
+# #         (v, 6): (random.randint(3,10), random.randint(3,10), random.randint(3,10)),
+# #     }
+# #     if(random.randint(1,2) == 1):
+# #         v = 3
+# #         c_prime = {
+# #             (1, v): (1, 2, 3),
+# #             (v, 6): (random.randint(3,6), random.randint(3,6), random.randint(3,6)),
+# #         }
+# #     ## Run the Dynamic SS Algorithm - Second Run Through
+# #     P, L, R, c = dynamic_single_source_paths(V, E, c, v, c_prime)
+# #     S = ols_every_vertice(V, P)
+# #     optimal_path_d2, optimal_path_costs_d2, sum_weighted_costs_d2 = optimal_sp(S, x, y, weights)
+# #     print(f"[Dynamic3] The optimal path is: {optimal_path_d2}, optimal path costs: {optimal_path_costs_d2}, and sum weighted cost: {sum_weighted_costs_d2}")
